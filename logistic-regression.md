@@ -38,7 +38,7 @@ data <- data.frame(VDP = runif(100, min=0, max=15), Disease = rbinom(100, 1, 0.5
 
 # Or supply your own.
 # Import data:
-# data <- read.csv("data/vdp.csv")
+data <- read.csv("data/vdp.csv")
 x <- data$VDP
 y <- data$Disease
 ```
@@ -49,31 +49,31 @@ y <- data$Disease
 print(paste("num_subj = ",length(x)))
 ```
 
-    ## [1] "num_subj =  100"
+    ## [1] "num_subj =  58"
 
 ``` r
 head(data)
 ```
 
-    ##         VDP Disease
-    ## 1  5.231044       1
-    ## 2  6.103780       0
-    ## 3 13.555973       0
-    ## 4  5.104707       0
-    ## 5  6.157868       1
-    ## 6 12.331856       0
+    ##    VDP Disease
+    ## 1 2.67       1
+    ## 2 3.00       1
+    ## 3 3.33       1
+    ## 4 1.22       1
+    ## 5 1.88       1
+    ## 6 0.56       0
 
 ``` r
 summary(data)
 ```
 
-    ##       VDP              Disease    
-    ##  Min.   : 0.08453   Min.   :0.00  
-    ##  1st Qu.: 4.13266   1st Qu.:0.00  
-    ##  Median : 7.72201   Median :0.00  
-    ##  Mean   : 7.41690   Mean   :0.43  
-    ##  3rd Qu.:10.88213   3rd Qu.:1.00  
-    ##  Max.   :14.78111   Max.   :1.00
+    ##       VDP           Disease      
+    ##  Min.   :0.560   Min.   :0.0000  
+    ##  1st Qu.:1.145   1st Qu.:0.0000  
+    ##  Median :1.880   Median :0.0000  
+    ##  Mean   :1.994   Mean   :0.4828  
+    ##  3rd Qu.:2.800   3rd Qu.:1.0000  
+    ##  Max.   :3.890   Max.   :1.0000
 
 ## Split data into testing and training
 
@@ -107,24 +107,30 @@ linear regression model to $x$:
 
 $$
 \log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
-$$ where $\beta_i$ are the model coefficients for each $x_i$. In this
-form, this model does not provide any use to us. However, by fitting the
-model and working out the coefficients, we can then rearrange for the
+$$
+
+where $\beta_i$ are the model coefficients for each $x_i$. In this form,
+this model does not provide any use to us. However, by fitting the model
+and working out the coefficients, we can then rearrange for the
 probability again. This is given by:
 
 $$
 p(x) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)}} = \sigma(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)
-$$ Notice, we use the sigmoid function as shorthand notation, which
-appears often in deep learning literature. It takes any real input, and
-outputs a number between 0 and 1. How useful! (This is actualy a
-particular sigmoid function called the logistic function, but since it
-is by far the most popular sigmoid function, often sigmoid function is
-used to refer to the logistic function).
+$$
+
+Notice, we use the sigmoid function as shorthand notation, which appears
+often in deep learning literature. It takes any real input, and outputs
+a number between 0 and 1. How useful! (This is actualy a particular
+sigmoid function called the logistic function, but since it is by far
+the most popular sigmoid function, often sigmoid function is used to
+refer to the logistic function).
 
 $$
 \sigma(x) = \frac{e^x}{1 + e^x} = \frac{1}{1 + e^{-x}}
-$$ The model is fit by numerically maximizing the likelihood, which we
-will let `R` take care of.
+$$
+
+The model is fit by numerically maximizing the likelihood, which we will
+let `R` take care of.
 
 In this case, we have a single predictor $x$ (our VDP measurements). We
 fit a generalized linear model in `R` using `glm`:
@@ -146,7 +152,7 @@ coef(model_glm)
 ```
 
     ## (Intercept)         VDP 
-    ##  -0.1788629   0.0552723
+    ##   -2.709394    1.125104
 
 The next thing we should understand is how the `predict()` function
 works with `glm()`. So, let’s look at some predictions.
@@ -155,8 +161,8 @@ works with `glm()`. So, let’s look at some predictions.
 head(predict(model_glm))
 ```
 
-    ##         49         65         25         74         18        100 
-    ## 0.32509362 0.29526537 0.26964529 0.07604671 0.36193271 0.29972094
+    ##         49         37          1         25         10         36 
+    ##  0.4408970 -0.1891612  0.2946335  0.6659178  0.4408970  0.4408970
 
 By default, `predict.glm()` uses `type = "link"`.
 
@@ -164,14 +170,16 @@ By default, `predict.glm()` uses `type = "link"`.
 head(predict(model_glm, type = "link"))
 ```
 
-    ##         49         65         25         74         18        100 
-    ## 0.32509362 0.29526537 0.26964529 0.07604671 0.36193271 0.29972094
+    ##         49         37          1         25         10         36 
+    ##  0.4408970 -0.1891612  0.2946335  0.6659178  0.4408970  0.4408970
 
 That is, `R` is returning
 
 $$
 \hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 + \cdots  + \hat{\beta}_p x_p
-$$ for each observation.
+$$
+
+for each observation.
 
 Importantly, these are **not** predicted probabilities. To obtain the
 predicted probabilities
@@ -186,8 +194,8 @@ we need to use `type = "response"`
 head(predict(model_glm, type = "response"))
 ```
 
-    ##        49        65        25        74        18       100 
-    ## 0.5805651 0.5732847 0.5670058 0.5190025 0.5895082 0.5743743
+    ##        49        37         1        25        10        36 
+    ## 0.6084728 0.4528502 0.5731301 0.6605885 0.6084728 0.6084728
 
 Note that these are probabilities, **not** classifications. To obtain
 classifications, we will need to compare to the correct cutoff value
@@ -228,7 +236,9 @@ where
 
 $$
 \hat{p}(x) = \hat{P}(Y = 1 \mid X = x).
-$$ Once we have classifications, we can calculate metrics such as the
+$$
+
+Once we have classifications, we can calculate metrics such as the
 training classification error rate.
 
 ``` r
@@ -241,7 +251,7 @@ calc_class_err = function(actual, predicted) {
 calc_class_err(actual = data_trn$Disease, predicted = model_glm_pred)
 ```
 
-    ## [1] 0.4
+    ## [1] 0.35
 
 The `table()` and `confusionMatrix()` functions can be used to quickly
 obtain many more metrics.
@@ -252,9 +262,9 @@ train_tab
 ```
 
     ##          actual
-    ## predicted  0  1
-    ##         0  2  1
-    ##         1  7 10
+    ## predicted 0 1
+    ##         0 7 3
+    ##         1 4 6
 
 ``` r
 train_con_mat = confusionMatrix(train_tab, positive = "1")
@@ -264,7 +274,7 @@ c(train_con_mat$overall["Accuracy"],
 ```
 
     ##    Accuracy Sensitivity Specificity 
-    ##   0.6000000   0.9090909   0.2222222
+    ##   0.6500000   0.6666667   0.6363636
 
 ## ROC Curves
 
@@ -284,7 +294,9 @@ $$
       1 & \hat{p}(x) > c \\
       0 & \hat{p}(x) \leq c 
 \end{cases}
-$$ Let’s use this to obtain predictions using a low, medium, and high
+$$
+
+Let’s use this to obtain predictions using a low, medium, and high
 cutoff. (0.1, 0.5, and 0.9)
 
 ``` r
@@ -337,10 +349,10 @@ rownames(metrics) = c("c = 0.10", "c = 0.50", "c = 0.90")
 metrics
 ```
 
-    ##          Accuracy Sensitivity Specificity
-    ## c = 0.10   0.4000     1.00000   0.0000000
-    ## c = 0.50   0.3875     0.71875   0.1666667
-    ## c = 0.90   0.6000     0.00000   1.0000000
+    ##           Accuracy Sensitivity Specificity
+    ## c = 0.10 0.5000000   1.0000000   0.0000000
+    ## c = 0.50 0.6052632   0.3684211   0.8421053
+    ## c = 0.90 0.5000000   0.0000000   1.0000000
 
 We see then sensitivity decreases as the cutoff is increased.
 Conversely, specificity increases as the cutoff increases. This is
@@ -367,7 +379,7 @@ test_roc = roc(data_tst$Disease ~ test_prob,
 as.numeric(test_roc$auc)
 ```
 
-    ## [1] 0.4570312
+    ## [1] 0.6855956
 
 A good model will have a high AUC, that is as often as possible a high
 sensitivity and specificity.

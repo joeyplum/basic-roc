@@ -82,16 +82,19 @@ In this case, $x$ is a vector containing our independent variables data (in our 
 $$
 \log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
 $$
+
 where $\beta_i$ are the model coefficients for each $x_i$. In this form, this model does not provide any use to us. However, by fitting the model and working out the coefficients, we can then rearrange for the probability again. This is given by:
 
 $$
 p(x) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)}} = \sigma(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)
 $$
+
 Notice, we use the sigmoid function as shorthand notation, which appears often in deep learning literature. It takes any real input, and outputs a number between 0 and 1. How useful! (This is actualy a particular sigmoid function called the logistic function, but since it is by far the most popular sigmoid function, often sigmoid function is used to refer to the logistic function).
 
 $$
 \sigma(x) = \frac{e^x}{1 + e^x} = \frac{1}{1 + e^{-x}}
 $$
+
 The model is fit by numerically maximizing the likelihood, which we will let `R` take care of.
 
 In this case, we have a single predictor $x$ (our VDP measurements). We fit a generalized linear model in `R` using `glm`:
@@ -125,6 +128,7 @@ That is, `R` is returning
 $$
 \hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 + \cdots  + \hat{\beta}_p x_p
 $$
+
 for each observation.
 
 Importantly, these are **not** predicted probabilities. To obtain the predicted probabilities
@@ -178,6 +182,7 @@ where
 $$
 \hat{p}(x) = \hat{P}(Y = 1 \mid X = x).
 $$
+
 Once we have classifications, we can calculate metrics such as the training classification error rate.
 
 ```{r}
@@ -200,6 +205,7 @@ c(train_con_mat$overall["Accuracy"],
   train_con_mat$byClass["Sensitivity"], 
   train_con_mat$byClass["Specificity"])
 ```
+
 ## ROC Curves
 
 We write a function which allows use to make predictions based on different probability cutoffs.
@@ -218,6 +224,7 @@ $$
       0 & \hat{p}(x) \leq c 
 \end{cases}
 $$
+
 Let's use this to obtain predictions using a low, medium, and high cutoff. (0.1, 0.5, and 0.9)
 
 ```{r}
