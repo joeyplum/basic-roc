@@ -1,3 +1,7 @@
+# Data folder
+data/
+logistic-regression_files
+
 # History files
 .Rhistory
 .Rapp.history

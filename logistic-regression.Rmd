@@ -1,0 +1,302 @@
+---
+title: "logistic-regression"
+author: "Joseph Plummer"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## GitHub Documents
+
+This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
+
+## Logistic regression
+
+In this document, we use logistic regression to model the probability of having disease given a biomarker.
+
+It is inspired by the well written works of: 
+https://daviddalpiaz.github.io/r4sl/logistic-regression.html
+https://github.com/daviddalpiaz/r4sl/blob/master/10-logistic.Rmd
+
+## Load libraries
+You can install a library if necessary by using `install.packages()`.
+
+```{r, message=FALSE}
+library(caret)
+library(pROC)
+library(ggplot2)
+```
+
+
+## Load data
+
+We will be using anonymous ventilation defect percentage (VDP) and disease classification data. 
+
+```{r, eval=TRUE}
+# Import data:
+data <- read.csv("data/vdp.csv")
+x <- data$VDP
+y <- data$Disease
+```
+
+## Understand data
+
+```{r, eval=TRUE}
+print(paste("num_subj = ",length(x)))
+head(data)
+summary(data)
+```
+
+
+## Split data into testing and training
+
+```{r}
+set.seed(42)
+data_idx = sample(nrow(data), 10)
+data_trn = data[data_idx, ]
+data_tst = data[-data_idx, ]
+```
+
+## Logistic Regression with `glm()`
+
+The probability of an outcome $Y=1$ given independent variable $X=x$ is mathematically represented by:
+
+$$
+p(x) = P(Y = 1 \mid {X = x})
+$$
+In this case, $x$ is a vector containing our independent variable data (VDP's for each subject). Logistic regression takes the log of the probability $p(x)$ over the anti-probability $1-p(x)$, and fits a linear regression model to $x$: 
+
+$$
+\log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
+$$
+where $\beta_i$ are the model coefficients for each $x_i$. In this form, this model does not provide any use to us. However, by fitting the model and working out the coefficients, we can then rearrange for the probability again. This is given by:
+
+$$
+p(x) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)}} = \sigma(\beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p)
+$$
+Notice, we use the sigmoid function as shorthand notation, which appears often in deep learning literature. It takes any real input, and outputs a number between 0 and 1. How useful! (This is actualy a particular sigmoid function called the logistic function, but since it is by far the most popular sigmoid function, often sigmoid function is used to refer to the logistic function).
+
+$$
+\sigma(x) = \frac{e^x}{1 + e^x} = \frac{1}{1 + e^{-x}}
+$$
+The model is fit by numerically maximizing the likelihood, which we will let `R` take care of.
+
+In this case, we have a single predictor $x$ (our VDP measurements). We fit a generalized linear model in `R` using `glm`:
+
+```{r}
+model_glm = glm(Disease ~ VDP, data = data_trn, family = "binomial")
+```
+
+Fitting this model looks very similar to fitting a simple linear regression. Instead of `lm()` we use `glm()`. The only other difference is the use of `family = "binomial"` which indicates that we have a two-class categorical response. Using `glm()` with `family = "gaussian"` would perform the usual linear regression.
+
+First, we can obtain the fitted coefficients the same way we did with linear regression.
+
+```{r}
+coef(model_glm)
+```
+
+The next thing we should understand is how the `predict()` function works with `glm()`. So, let's look at some predictions.
+
+```{r}
+head(predict(model_glm))
+```
+
+By default, `predict.glm()` uses `type = "link"`.
+
+```{r}
+head(predict(model_glm, type = "link"))
+```
+
+That is, `R` is returning
+
+$$
+\hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 + \cdots  + \hat{\beta}_p x_p
+$$
+for each observation.
+
+Importantly, these are **not** predicted probabilities. To obtain the predicted probabilities
+
+$$
+\hat{p}(x) = \hat{P}(Y = 1 \mid X = x)
+$$
+
+we need to use `type = "response"`
+
+```{r}
+head(predict(model_glm, type = "response"))
+```
+
+Note that these are probabilities, **not** classifications. To obtain classifications, we will need to compare to the correct cutoff value with an `ifelse()` statement.
+
+```{r}
+model_glm_pred = ifelse(predict(model_glm, type = "link") > 0, "1", "0")
+# model_glm_pred = ifelse(predict(model_glm, type = "response") > 0.5, "1", "0")
+```
+
+
+The line that is run is performing
+
+$$
+\hat{C}(x) = 
+\begin{cases} 
+      1 & \hat{f}(x) > 0 \\
+      0 & \hat{f}(x) \leq 0 
+\end{cases}
+$$
+
+where 
+
+$$
+\hat{f}(x) =\hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 + \cdots  + \hat{\beta}_p x_p.
+$$
+
+The commented line, which would give the same results, is performing
+
+$$
+\hat{C}(x) = 
+\begin{cases} 
+      1 & \hat{p}(x) > 0.5 \\
+      0 & \hat{p}(x) \leq 0.5 
+\end{cases}
+$$
+
+where 
+
+$$
+\hat{p}(x) = \hat{P}(Y = 1 \mid X = x).
+$$
+Once we have classifications, we can calculate metrics such as the training classification error rate.
+
+```{r}
+calc_class_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+```
+
+```{r}
+calc_class_err(actual = data_trn$Disease, predicted = model_glm_pred)
+```
+
+The `table()` and `confusionMatrix()` functions can be used to quickly obtain many more metrics.
+
+```{r, message = FALSE, warning = FALSE}
+train_tab = table(predicted = model_glm_pred, actual = data_trn$Disease)
+train_tab
+train_con_mat = confusionMatrix(train_tab, positive = "1")
+c(train_con_mat$overall["Accuracy"], 
+  train_con_mat$byClass["Sensitivity"], 
+  train_con_mat$byClass["Specificity"])
+```
+## ROC Curves
+
+We write a function which allows use to make predictions based on different probability cutoffs.
+
+```{r}
+get_logistic_pred = function(mod, data, res = "y", pos = 1, neg = 0, cut = 0.5) {
+  probs = predict(mod, newdata = data, type = "response")
+  ifelse(probs > cut, pos, neg)
+}
+```
+
+$$
+\hat{C}(x) = 
+\begin{cases} 
+      1 & \hat{p}(x) > c \\
+      0 & \hat{p}(x) \leq c 
+\end{cases}
+$$
+Let's use this to obtain predictions using a low, medium, and high cutoff. (0.1, 0.5, and 0.9)
+
+```{r}
+test_pred_10 = get_logistic_pred(model_glm, data = data_tst, res = "Disease", 
+                                 pos = "1", neg = "0", cut = 0.1)
+test_pred_50 = get_logistic_pred(model_glm, data = data_tst, res = "Disease", 
+                                 pos = "1", neg = "0", cut = 0.5)
+test_pred_90 = get_logistic_pred(model_glm, data = data_tst, res = "Disease", 
+                                 pos = "1", neg = "0", cut = 0.9)
+```
+
+Now we evaluate accuracy, sensitivity, and specificity for these classifiers.
+
+```{r}
+test_tab_10 = table(predicted = test_pred_10, actual = data_tst$Disease)
+test_tab_50 = table(predicted = test_pred_50, actual = data_tst$Disease)
+test_tab_90 = table(predicted = test_pred_90, actual = data_tst$Disease)
+
+test_con_mat_10 = confusionMatrix(test_tab_10, positive = "1")
+test_con_mat_50 = confusionMatrix(test_tab_50, positive = "1")
+test_con_mat_90 = confusionMatrix(test_tab_90, positive = "1")
+```
+
+```{r}
+metrics = rbind(
+  
+  c(test_con_mat_10$overall["Accuracy"], 
+    test_con_mat_10$byClass["Sensitivity"], 
+    test_con_mat_10$byClass["Specificity"]),
+  
+  c(test_con_mat_50$overall["Accuracy"], 
+    test_con_mat_50$byClass["Sensitivity"], 
+    test_con_mat_50$byClass["Specificity"]),
+  
+  c(test_con_mat_90$overall["Accuracy"], 
+    test_con_mat_90$byClass["Sensitivity"], 
+    test_con_mat_90$byClass["Specificity"])
+
+)
+
+rownames(metrics) = c("c = 0.10", "c = 0.50", "c = 0.90")
+metrics
+```
+
+We see then sensitivity decreases as the cutoff is increased. Conversely, specificity increases as the cutoff increases. This is useful if we are more interested in a particular error, instead of giving them equal weight.
+
+Note that usually the best accuracy will be seen near $c = 0.50$.
+
+Instead of manually checking cutoffs, we can create an ROC curve (receiver operating characteristic curve) which will sweep through all possible cutoffs, and plot the sensitivity and specificity.
+
+
+
+```{r, message = FALSE, warning = FALSE}
+test_prob = predict(model_glm, newdata = data_tst, type = "response")
+test_roc = roc(data_tst$Disease ~ test_prob, 
+               levels = c(1,0), 
+               direction = ">",
+               plot = TRUE, print.auc = TRUE)
+as.numeric(test_roc$auc)
+```
+
+A good model will have a high AUC, that is as often as possible a high sensitivity and specificity.
+
+We can also make a much prettier plot using `ggplot2`.
+
+```{r, echo=FALSE}
+# Gather relevant entities for the build-up of a ROC curve: 
+vdp_ROC <- data.frame(Sensitivity = test_roc$sensitivities, 
+                                 Specificity = 1 - test_roc$specificities, 
+                                 Cutoffs = test_roc$thresholds)
+
+# Plot the ROC curves
+ggplot() + 
+  geom_path(data = vdp_ROC, 
+            aes(x = Specificity, y = Sensitivity),
+            lwd = 1.5, linetype = "solid", color = "orange") +
+  geom_abline(intercept = 0, slope = 1, lwd = 1.5, linetype = "solid") +
+  xlab('1 - Specificity') +
+  ylab('Sensitivity') + 
+  xlim(0, 1) + 
+  ylim(0, 1) +
+  ggtitle("ROC Curve for VDP Biomarker") +
+  theme_gray() +
+  theme(axis.title.x = element_text(color = "black", size = 16, face = "bold"),
+        axis.title.y = element_text(color = "black", size = 16, face = "bold"),
+        legend.text = element_text(size = 12),
+        title = element_text(size = 16, face = "bold"),
+        axis.text = element_text(size = 13),
+        plot.margin = unit(c(0, 0, 0, 0), "mm")) 
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
