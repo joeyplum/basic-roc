@@ -17,8 +17,8 @@ This is an R Markdown format used for publishing markdown documents to GitHub. W
 In this document, we use logistic regression to model the probability of having disease given a biomarker.
 
 It is inspired by the well written works of: 
+
 https://daviddalpiaz.github.io/r4sl/logistic-regression.html
-https://github.com/daviddalpiaz/r4sl/blob/master/10-logistic.Rmd
 
 ## Load libraries
 You can install a library if necessary by using `install.packages()`.
@@ -54,19 +54,26 @@ summary(data)
 
 ```{r}
 set.seed(42)
-data_idx = sample(nrow(data), 10)
+data_idx = sample(nrow(data), 20)
 data_trn = data[data_idx, ]
 data_tst = data[-data_idx, ]
 ```
 
+This next line is illegal, but for learning purposes: let's use the same data for both testing and training the model. For real statistics, remove this section.
+
+```{r}
+# data_trn = data
+# data_tst = data
+```
+
 ## Logistic Regression with `glm()`
 
-The probability of an outcome $Y=1$ given independent variable $X=x$ is mathematically represented by:
+The probability of an outcome $Y=1$ given a list of independent variables $X=x$ is mathematically represented by:
 
 $$
 p(x) = P(Y = 1 \mid {X = x})
 $$
-In this case, $x$ is a vector containing our independent variable data (VDP's for each subject). Logistic regression takes the log of the probability $p(x)$ over the anti-probability $1-p(x)$, and fits a linear regression model to $x$: 
+In this case, $x$ is a vector containing our independent variables data (in our case, we only have VDP). Logistic regression takes the log of the probability $p(x)$ over the anti-probability $1-p(x)$, and fits a linear regression model to $x$: 
 
 $$
 \log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
@@ -91,7 +98,7 @@ model_glm = glm(Disease ~ VDP, data = data_trn, family = "binomial")
 
 Fitting this model looks very similar to fitting a simple linear regression. Instead of `lm()` we use `glm()`. The only other difference is the use of `family = "binomial"` which indicates that we have a two-class categorical response. Using `glm()` with `family = "gaussian"` would perform the usual linear regression.
 
-First, we can obtain the fitted coefficients the same way we did with linear regression.
+We can obtain the fitted coefficients:
 
 ```{r}
 coef(model_glm)
@@ -221,10 +228,17 @@ test_pred_90 = get_logistic_pred(model_glm, data = data_tst, res = "Disease",
 Now we evaluate accuracy, sensitivity, and specificity for these classifiers.
 
 ```{r}
+# Make robust to zero frequency
+test_pred_10 <- factor(test_pred_10,levels=c(0,1))
+test_pred_50 <- factor(test_pred_50,levels=c(0,1))
+test_pred_90 <- factor(test_pred_90,levels=c(0,1))
+
+# Write tables
 test_tab_10 = table(predicted = test_pred_10, actual = data_tst$Disease)
 test_tab_50 = table(predicted = test_pred_50, actual = data_tst$Disease)
 test_tab_90 = table(predicted = test_pred_90, actual = data_tst$Disease)
 
+# Generate confusion matrices
 test_con_mat_10 = confusionMatrix(test_tab_10, positive = "1")
 test_con_mat_50 = confusionMatrix(test_tab_50, positive = "1")
 test_con_mat_90 = confusionMatrix(test_tab_90, positive = "1")

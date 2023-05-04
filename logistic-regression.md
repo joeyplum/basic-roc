@@ -14,7 +14,8 @@ In this document, we use logistic regression to model the probability of
 having disease given a biomarker.
 
 It is inspired by the well written works of:
-<https://github.com/daviddalpiaz/r4sl/blob/master/10-logistic.Rmd>
+
+<https://daviddalpiaz.github.io/r4sl/logistic-regression.html>
 
 ## Load libraries
 
@@ -50,46 +51,55 @@ print(paste("num_subj = ",length(x)))
 head(data)
 ```
 
-    ##   VDP Disease
-    ## 1   1       1
-    ## 2   4       1
-    ## 3   3       1
-    ## 4   4       1
-    ## 5   2       1
-    ## 6  -1       0
+    ##    VDP Disease
+    ## 1 1.45       1
+    ## 2 1.12       1
+    ## 3 2.80       1
+    ## 4 2.01       1
+    ## 5 2.24       1
+    ## 6 2.80       0
 
 ``` r
 summary(data)
 ```
 
-    ##       VDP            Disease      
-    ##  Min.   :-1.000   Min.   :0.0000  
-    ##  1st Qu.: 0.000   1st Qu.:0.0000  
-    ##  Median : 1.000   Median :0.0000  
-    ##  Mean   : 1.241   Mean   :0.4828  
-    ##  3rd Qu.: 2.750   3rd Qu.:1.0000  
-    ##  Max.   : 6.000   Max.   :1.0000
+    ##       VDP           Disease      
+    ##  Min.   :0.560   Min.   :0.0000  
+    ##  1st Qu.:1.202   1st Qu.:0.0000  
+    ##  Median :1.845   Median :0.0000  
+    ##  Mean   :1.874   Mean   :0.4828  
+    ##  3rd Qu.:2.240   3rd Qu.:1.0000  
+    ##  Max.   :3.130   Max.   :1.0000
 
 ## Split data into testing and training
 
 ``` r
 set.seed(42)
-data_idx = sample(nrow(data), 10)
+data_idx = sample(nrow(data), 20)
 data_trn = data[data_idx, ]
 data_tst = data[-data_idx, ]
 ```
 
+This next line is illegal, but for learning purposes: let’s use the same
+data for both testing and training the model. For real statistics,
+remove this section.
+
+``` r
+# data_trn = data
+# data_tst = data
+```
+
 ## Logistic Regression with `glm()`
 
-The probability of an outcome $Y=1$ given independent variable $X=x$ is
-mathematically represented by:
+The probability of an outcome $Y=1$ given a list of independent
+variables $X=x$ is mathematically represented by:
 
 $$
 p(x) = P(Y = 1 \mid {X = x})
-$$ In this case, $x$ is a vector containing our independent variable
-data (VDP’s for each subject). Logistic regression takes the log of the
-probability $p(x)$ over the anti-probability $1-p(x)$, and fits a linear
-regression model to $x$:
+$$ In this case, $x$ is a vector containing our independent variables
+data (in our case, we only have VDP). Logistic regression takes the log
+of the probability $p(x)$ over the anti-probability $1-p(x)$, and fits a
+linear regression model to $x$:
 
 $$
 \log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
@@ -119,23 +129,20 @@ fit a generalized linear model in `R` using `glm`:
 model_glm = glm(Disease ~ VDP, data = data_trn, family = "binomial")
 ```
 
-    ## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
 Fitting this model looks very similar to fitting a simple linear
 regression. Instead of `lm()` we use `glm()`. The only other difference
 is the use of `family = "binomial"` which indicates that we have a
 two-class categorical response. Using `glm()` with `family = "gaussian"`
 would perform the usual linear regression.
 
-First, we can obtain the fitted coefficients the same way we did with
-linear regression.
+We can obtain the fitted coefficients:
 
 ``` r
 coef(model_glm)
 ```
 
     ## (Intercept)         VDP 
-    ##   -19.66779    18.28150
+    ##  -0.8580784   0.3726075
 
 The next thing we should understand is how the `predict()` function
 works with `glm()`. So, let’s look at some predictions.
@@ -145,7 +152,7 @@ head(predict(model_glm))
 ```
 
     ##         49         37          1         25         10         36 
-    ##  -1.386294 -19.667793  -1.386294  71.739702  -1.386294  -1.386294
+    ## -0.2320978 -0.2320978 -0.3177975 -0.2320978 -0.4407580 -0.4407580
 
 By default, `predict.glm()` uses `type = "link"`.
 
@@ -154,7 +161,7 @@ head(predict(model_glm, type = "link"))
 ```
 
     ##         49         37          1         25         10         36 
-    ##  -1.386294 -19.667793  -1.386294  71.739702  -1.386294  -1.386294
+    ## -0.2320978 -0.2320978 -0.3177975 -0.2320978 -0.4407580 -0.4407580
 
 That is, `R` is returning
 
@@ -175,8 +182,8 @@ we need to use `type = "response"`
 head(predict(model_glm, type = "response"))
 ```
 
-    ##           49           37            1           25           10           36 
-    ## 2.000000e-01 2.873332e-09 2.000000e-01 1.000000e+00 2.000000e-01 2.000000e-01
+    ##        49        37         1        25        10        36 
+    ## 0.4422346 0.4422346 0.4212126 0.4422346 0.3915604 0.3915604
 
 Note that these are probabilities, **not** classifications. To obtain
 classifications, we will need to compare to the correct cutoff value
@@ -230,7 +237,7 @@ calc_class_err = function(actual, predicted) {
 calc_class_err(actual = data_trn$Disease, predicted = model_glm_pred)
 ```
 
-    ## [1] 0.1
+    ## [1] 0.35
 
 The `table()` and `confusionMatrix()` functions can be used to quickly
 obtain many more metrics.
@@ -241,9 +248,9 @@ train_tab
 ```
 
     ##          actual
-    ## predicted 0 1
-    ##         0 7 1
-    ##         1 0 2
+    ## predicted  0  1
+    ##         0 10  6
+    ##         1  1  3
 
 ``` r
 train_con_mat = confusionMatrix(train_tab, positive = "1")
@@ -253,7 +260,7 @@ c(train_con_mat$overall["Accuracy"],
 ```
 
     ##    Accuracy Sensitivity Specificity 
-    ##   0.9000000   0.6666667   1.0000000
+    ##   0.6500000   0.3333333   0.9090909
 
 ## ROC Curves
 
@@ -289,10 +296,17 @@ Now we evaluate accuracy, sensitivity, and specificity for these
 classifiers.
 
 ``` r
+# Make robust to zero frequency
+test_pred_10 <- factor(test_pred_10,levels=c(0,1))
+test_pred_50 <- factor(test_pred_50,levels=c(0,1))
+test_pred_90 <- factor(test_pred_90,levels=c(0,1))
+
+# Write tables
 test_tab_10 = table(predicted = test_pred_10, actual = data_tst$Disease)
 test_tab_50 = table(predicted = test_pred_50, actual = data_tst$Disease)
 test_tab_90 = table(predicted = test_pred_90, actual = data_tst$Disease)
 
+# Generate confusion matrices
 test_con_mat_10 = confusionMatrix(test_tab_10, positive = "1")
 test_con_mat_50 = confusionMatrix(test_tab_50, positive = "1")
 test_con_mat_90 = confusionMatrix(test_tab_90, positive = "1")
@@ -320,9 +334,9 @@ metrics
 ```
 
     ##           Accuracy Sensitivity Specificity
-    ## c = 0.10 0.7291667        0.76   0.6956522
-    ## c = 0.50 0.7916667        0.60   1.0000000
-    ## c = 0.90 0.7916667        0.60   1.0000000
+    ## c = 0.10 0.5000000   1.0000000   0.0000000
+    ## c = 0.50 0.3947368   0.1578947   0.6315789
+    ## c = 0.90 0.5000000   0.0000000   1.0000000
 
 We see then sensitivity decreases as the cutoff is increased.
 Conversely, specificity increases as the cutoff increases. This is
@@ -343,20 +357,20 @@ test_roc = roc(data_tst$Disease ~ test_prob,
                plot = TRUE, print.auc = TRUE)
 ```
 
-![](logistic-regression_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](logistic-regression_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ``` r
 as.numeric(test_roc$auc)
 ```
 
-    ## [1] 0.8243478
+    ## [1] 0.3781163
 
 A good model will have a high AUC, that is as often as possible a high
 sensitivity and specificity.
 
 We can also make a much prettier plot using `ggplot2`.
 
-![](logistic-regression_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](logistic-regression_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 Note that the `echo = FALSE` parameter was added to the code chunk to
 prevent printing of the R code that generated the plot.
