@@ -35,6 +35,10 @@ library(ggplot2)
 We will be using anonymous ventilation defect percentage (VDP) and disease classification data. 
 
 ```{r, eval=TRUE}
+# Generate random data.
+data <- data.frame(VDP = runif(100, min=0, max=15), Disease = rbinom(100, 1, 0.5))
+
+# Or supply your own.
 # Import data:
 data <- read.csv("data/vdp.csv")
 x <- data$VDP

@@ -33,8 +33,12 @@ We will be using anonymous ventilation defect percentage (VDP) and
 disease classification data.
 
 ``` r
+# Generate random data.
+data <- data.frame(VDP = runif(100, min=0, max=15), Disease = rbinom(100, 1, 0.5))
+
+# Or supply your own.
 # Import data:
-data <- read.csv("data/vdp.csv")
+# data <- read.csv("data/vdp.csv")
 x <- data$VDP
 y <- data$Disease
 ```
@@ -45,31 +49,31 @@ y <- data$Disease
 print(paste("num_subj = ",length(x)))
 ```
 
-    ## [1] "num_subj =  58"
+    ## [1] "num_subj =  100"
 
 ``` r
 head(data)
 ```
 
-    ##    VDP Disease
-    ## 1 1.45       1
-    ## 2 1.12       1
-    ## 3 2.80       1
-    ## 4 2.01       1
-    ## 5 2.24       1
-    ## 6 2.80       0
+    ##         VDP Disease
+    ## 1  5.231044       1
+    ## 2  6.103780       0
+    ## 3 13.555973       0
+    ## 4  5.104707       0
+    ## 5  6.157868       1
+    ## 6 12.331856       0
 
 ``` r
 summary(data)
 ```
 
-    ##       VDP           Disease      
-    ##  Min.   :0.560   Min.   :0.0000  
-    ##  1st Qu.:1.202   1st Qu.:0.0000  
-    ##  Median :1.845   Median :0.0000  
-    ##  Mean   :1.874   Mean   :0.4828  
-    ##  3rd Qu.:2.240   3rd Qu.:1.0000  
-    ##  Max.   :3.130   Max.   :1.0000
+    ##       VDP              Disease    
+    ##  Min.   : 0.08453   Min.   :0.00  
+    ##  1st Qu.: 4.13266   1st Qu.:0.00  
+    ##  Median : 7.72201   Median :0.00  
+    ##  Mean   : 7.41690   Mean   :0.43  
+    ##  3rd Qu.:10.88213   3rd Qu.:1.00  
+    ##  Max.   :14.78111   Max.   :1.00
 
 ## Split data into testing and training
 
@@ -142,7 +146,7 @@ coef(model_glm)
 ```
 
     ## (Intercept)         VDP 
-    ##  -0.8580784   0.3726075
+    ##  -0.1788629   0.0552723
 
 The next thing we should understand is how the `predict()` function
 works with `glm()`. So, let’s look at some predictions.
@@ -151,8 +155,8 @@ works with `glm()`. So, let’s look at some predictions.
 head(predict(model_glm))
 ```
 
-    ##         49         37          1         25         10         36 
-    ## -0.2320978 -0.2320978 -0.3177975 -0.2320978 -0.4407580 -0.4407580
+    ##         49         65         25         74         18        100 
+    ## 0.32509362 0.29526537 0.26964529 0.07604671 0.36193271 0.29972094
 
 By default, `predict.glm()` uses `type = "link"`.
 
@@ -160,8 +164,8 @@ By default, `predict.glm()` uses `type = "link"`.
 head(predict(model_glm, type = "link"))
 ```
 
-    ##         49         37          1         25         10         36 
-    ## -0.2320978 -0.2320978 -0.3177975 -0.2320978 -0.4407580 -0.4407580
+    ##         49         65         25         74         18        100 
+    ## 0.32509362 0.29526537 0.26964529 0.07604671 0.36193271 0.29972094
 
 That is, `R` is returning
 
@@ -182,8 +186,8 @@ we need to use `type = "response"`
 head(predict(model_glm, type = "response"))
 ```
 
-    ##        49        37         1        25        10        36 
-    ## 0.4422346 0.4422346 0.4212126 0.4422346 0.3915604 0.3915604
+    ##        49        65        25        74        18       100 
+    ## 0.5805651 0.5732847 0.5670058 0.5190025 0.5895082 0.5743743
 
 Note that these are probabilities, **not** classifications. To obtain
 classifications, we will need to compare to the correct cutoff value
@@ -237,7 +241,7 @@ calc_class_err = function(actual, predicted) {
 calc_class_err(actual = data_trn$Disease, predicted = model_glm_pred)
 ```
 
-    ## [1] 0.35
+    ## [1] 0.4
 
 The `table()` and `confusionMatrix()` functions can be used to quickly
 obtain many more metrics.
@@ -249,8 +253,8 @@ train_tab
 
     ##          actual
     ## predicted  0  1
-    ##         0 10  6
-    ##         1  1  3
+    ##         0  2  1
+    ##         1  7 10
 
 ``` r
 train_con_mat = confusionMatrix(train_tab, positive = "1")
@@ -260,7 +264,7 @@ c(train_con_mat$overall["Accuracy"],
 ```
 
     ##    Accuracy Sensitivity Specificity 
-    ##   0.6500000   0.3333333   0.9090909
+    ##   0.6000000   0.9090909   0.2222222
 
 ## ROC Curves
 
@@ -333,10 +337,10 @@ rownames(metrics) = c("c = 0.10", "c = 0.50", "c = 0.90")
 metrics
 ```
 
-    ##           Accuracy Sensitivity Specificity
-    ## c = 0.10 0.5000000   1.0000000   0.0000000
-    ## c = 0.50 0.3947368   0.1578947   0.6315789
-    ## c = 0.90 0.5000000   0.0000000   1.0000000
+    ##          Accuracy Sensitivity Specificity
+    ## c = 0.10   0.4000     1.00000   0.0000000
+    ## c = 0.50   0.3875     0.71875   0.1666667
+    ## c = 0.90   0.6000     0.00000   1.0000000
 
 We see then sensitivity decreases as the cutoff is increased.
 Conversely, specificity increases as the cutoff increases. This is
@@ -363,7 +367,7 @@ test_roc = roc(data_tst$Disease ~ test_prob,
 as.numeric(test_roc$auc)
 ```
 
-    ## [1] 0.3781163
+    ## [1] 0.4570312
 
 A good model will have a high AUC, that is as often as possible a high
 sensitivity and specificity.
