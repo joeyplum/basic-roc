@@ -49,31 +49,31 @@ y <- data$Disease
 print(paste("num_subj = ",length(x)))
 ```
 
-    ## [1] "num_subj =  58"
+    ## [1] "num_subj =  67"
 
 ``` r
 head(data)
 ```
 
     ##    VDP Disease
-    ## 1 2.67       1
-    ## 2 3.00       1
-    ## 3 3.33       1
-    ## 4 1.22       1
-    ## 5 1.88       1
-    ## 6 0.56       0
+    ## 1  8.3       0
+    ## 2  4.6       0
+    ## 3  9.7       0
+    ## 4 16.0       1
+    ## 5  4.8       0
+    ## 6  4.4       0
 
 ``` r
 summary(data)
 ```
 
     ##       VDP           Disease      
-    ##  Min.   :0.560   Min.   :0.0000  
-    ##  1st Qu.:1.145   1st Qu.:0.0000  
-    ##  Median :1.880   Median :0.0000  
-    ##  Mean   :1.994   Mean   :0.4828  
-    ##  3rd Qu.:2.800   3rd Qu.:1.0000  
-    ##  Max.   :3.890   Max.   :1.0000
+    ##  Min.   : 0.50   Min.   :0.0000  
+    ##  1st Qu.: 2.95   1st Qu.:0.0000  
+    ##  Median : 5.20   Median :0.0000  
+    ##  Mean   :11.56   Mean   :0.3582  
+    ##  3rd Qu.:18.30   3rd Qu.:1.0000  
+    ##  Max.   :45.30   Max.   :1.0000
 
 ## Split data into testing and training
 
@@ -152,7 +152,7 @@ coef(model_glm)
 ```
 
     ## (Intercept)         VDP 
-    ##   -2.709394    1.125104
+    ##  -3.6650095   0.2061658
 
 The next thing we should understand is how the `predict()` function
 works with `glm()`. So, let’s look at some predictions.
@@ -161,8 +161,8 @@ works with `glm()`. So, let’s look at some predictions.
 head(predict(model_glm))
 ```
 
-    ##         49         37          1         25         10         36 
-    ##  0.4408970 -0.1891612  0.2946335  0.6659178  0.4408970  0.4408970
+    ##          49          65          25          10          36          18 
+    ##  0.04597515 -2.92281259 -3.14959499 -3.41761055 -3.04651208 -2.59294729
 
 By default, `predict.glm()` uses `type = "link"`.
 
@@ -170,8 +170,8 @@ By default, `predict.glm()` uses `type = "link"`.
 head(predict(model_glm, type = "link"))
 ```
 
-    ##         49         37          1         25         10         36 
-    ##  0.4408970 -0.1891612  0.2946335  0.6659178  0.4408970  0.4408970
+    ##          49          65          25          10          36          18 
+    ##  0.04597515 -2.92281259 -3.14959499 -3.41761055 -3.04651208 -2.59294729
 
 That is, `R` is returning
 
@@ -194,8 +194,8 @@ we need to use `type = "response"`
 head(predict(model_glm, type = "response"))
 ```
 
-    ##        49        37         1        25        10        36 
-    ## 0.6084728 0.4528502 0.5731301 0.6605885 0.6084728 0.6084728
+    ##         49         65         25         10         36         18 
+    ## 0.51149176 0.05103731 0.04110724 0.03174960 0.04536830 0.06959370
 
 Note that these are probabilities, **not** classifications. To obtain
 classifications, we will need to compare to the correct cutoff value
@@ -251,7 +251,7 @@ calc_class_err = function(actual, predicted) {
 calc_class_err(actual = data_trn$Disease, predicted = model_glm_pred)
 ```
 
-    ## [1] 0.35
+    ## [1] 0.15
 
 The `table()` and `confusionMatrix()` functions can be used to quickly
 obtain many more metrics.
@@ -262,9 +262,9 @@ train_tab
 ```
 
     ##          actual
-    ## predicted 0 1
-    ##         0 7 3
-    ##         1 4 6
+    ## predicted  0  1
+    ##         0 12  2
+    ##         1  1  5
 
 ``` r
 train_con_mat = confusionMatrix(train_tab, positive = "1")
@@ -274,7 +274,7 @@ c(train_con_mat$overall["Accuracy"],
 ```
 
     ##    Accuracy Sensitivity Specificity 
-    ##   0.6500000   0.6666667   0.6363636
+    ##   0.8500000   0.7142857   0.9230769
 
 ## ROC Curves
 
@@ -350,9 +350,9 @@ metrics
 ```
 
     ##           Accuracy Sensitivity Specificity
-    ## c = 0.10 0.5000000   1.0000000   0.0000000
-    ## c = 0.50 0.6052632   0.3684211   0.8421053
-    ## c = 0.90 0.5000000   0.0000000   1.0000000
+    ## c = 0.10 0.8723404   0.9411765   0.8333333
+    ## c = 0.50 0.8085106   0.5882353   0.9333333
+    ## c = 0.90 0.7021277   0.1764706   1.0000000
 
 We see then sensitivity decreases as the cutoff is increased.
 Conversely, specificity increases as the cutoff increases. This is
@@ -379,7 +379,7 @@ test_roc = roc(data_tst$Disease ~ test_prob,
 as.numeric(test_roc$auc)
 ```
 
-    ## [1] 0.6855956
+    ## [1] 0.9235294
 
 A good model will have a high AUC, that is as often as possible a high
 sensitivity and specificity.
